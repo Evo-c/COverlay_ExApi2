@@ -1,10 +1,15 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
-using System.Windows.Forms;
+using System.Threading.Tasks;
+using System.Xml.Linq;
 using ExileCore2;
 using ExileCore2.PoEMemory.Elements.AtlasElements;
 using ExileCore2.PoEMemory.MemoryObjects;
+using ExileCore2.Shared;
+using GameOffsets2.Native;
+using RectangleF = ExileCore2.Shared.RectangleF;
 using Vector2 = System.Numerics.Vector2;
 
 namespace cOverlay
@@ -15,6 +20,11 @@ namespace cOverlay
         private bool isAtlasPanelOpen = false;
         private HashSet<Node> nodesToDraw = new HashSet<Node>();
         private HashSet<AtlasNodeDescription> atlasNodes = new HashSet<AtlasNodeDescription>();
+        private HashSet<Node> processingNodes = new HashSet<Node>();
+        private HashSet<(Vector2i, Vector2i, Vector2i, Vector2i, Vector2i)> atlasPoints = new HashSet<(Vector2i, Vector2i, Vector2i, Vector2i, Vector2i)>();
+        public Stopwatch swRefresh = Stopwatch.StartNew();
+        public Stopwatch contentSw = Stopwatch.StartNew();
+        public Stopwatch swRun = Stopwatch.StartNew();
 
         public override bool Initialise()
         {
@@ -27,68 +37,77 @@ namespace cOverlay
         public override void AreaChange(AreaInstance area)
         {
             atlasNodes.Clear();
-            nodesToDraw.Clear();
+            processingNodes.Clear();
             //Perform once-per-zone processing here
             //For example, Radar builds the zone map texture here
+        }
+
+        public bool IsInScreen(AtlasNodeDescription node)
+        {
+            var nodeElement = node.Element;
+            return nodeElement.Center.X > 0 && nodeElement.Center.X < state.borderX && nodeElement.Center.Y > 0 && nodeElement.Center.Y < state.borderY;
         }
 
         public override void Tick()
         {
             var atlasPanel = GameController.IngameState.IngameUi.WorldMap.AtlasPanel;
             isAtlasPanelOpen = atlasPanel.IsVisible;
-
+            var counter = 0;
             if (isAtlasPanelOpen)
             {
-                if (nodesToDraw.Where(x => x.NodeElement.X > state.borderX || x.NodeElement.X < 0 || x.NodeElement.Y > state.borderY || x.NodeElement.Y < 0).Count() > 10 || nodesToDraw.Count < 15)
+                if (swRefresh.ElapsedMilliseconds > 10000 || counter < 1)
                 {
                     foreach (var node in atlasPanel.Descriptions)
                     {
                         atlasNodes.Add(node);
                     }
 
-                    //foreach (var effect in atlasPanel.EffectSources)
-                    //{
-                    //    effectSources.Add(effect);
-                    //}
+                    foreach (var point in atlasPanel.Points)
+                    {
+                        atlasPoints.Add(point);
+                    }
 
-                    //foreach (var effectNode in effectSources)
-                    //{
-                    //    effectNodes = atlasPanel.Descriptions.Where(x => x.Coordinate == effectNode.Coordinate).ToList();
-                    //}
+                    counter++;
+                    swRefresh.Restart();
+                }
 
+                if (swRun.ElapsedMilliseconds > 250)
+                {
                     foreach (var node in atlasNodes)
                     {
-                        LogMessage($"{state.NodeColors.Count}");
-                        if (!state.NodeColors.ContainsKey(node.Element.Area.Name))
+                        if (!IsInScreen(node))
                         {
-                            state.NodeColors.Add(node.Element.Area.Name, Color.Red);
-                            state.NameColors.Add(node.Element.Area.Name, Color.Green);
+                            processingNodes.RemoveWhere(x => x.ID == node.Address);
+                            continue;
                         }
-                        var nodeObject = new Node(node.Element, node.Address, state.NodeColors[node.Element.Area.Name], state.NameColors[node.Element.Area.Name]);
 
-                        //if (nodeObject.NodeElement.IsCompleted && !nodeObject.NodeElement.IsTower)
-                        //    continue;
-
-                        if (nodeObject.NodeElement.X > 0
-                            && nodeObject.NodeElement.X < state.borderX
-                            && nodeObject.NodeElement.Y > 0
-                            && nodeObject.NodeElement.Y < state.borderY)
+                        //LogMsg(processingNodes.Count.ToString());
+                        if (!processingNodes.Any(x => x.ID == node.Address)
+                            && !node.Element.IsCompleted)
                         {
-                            if (!nodesToDraw.Any(x =>
-                                x.ID == node.Address))
+                            List<AtlasNodeDescription> nNodes = new List<AtlasNodeDescription>();
+
+                            var point = atlasPoints.FirstOrDefault(x => x.Item1 == node.Coordinate);
+                            foreach (var nd in atlasNodes)
                             {
-                                var nearbyTowers = atlasNodes.Where(x => x.Element.IsTower && Vector2.Distance(x.Coordinate, node.Coordinate) <= 11);
-                                var affectedTowers = nearbyTowers.Where(x => atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate));
-                                nodeObject.TowersCount = nearbyTowers.Count();
-                                nodeObject.AffectedTowersCount = affectedTowers.Count();
-                                nodesToDraw.Add(nodeObject);
+                                if (nd.Coordinate == point.Item2 ||
+                                    nd.Coordinate == point.Item3 ||
+                                    nd.Coordinate == point.Item4 ||
+                                    nd.Coordinate == point.Item5)
+                                {
+                                    nNodes.Add(nd);
+                                }
                             }
-                        }
-                        else
-                        {
-                            nodesToDraw.RemoveWhere(x => x.ID == node.Address);
-                        }
+
+                            var nearbyTowers = atlasNodes.Where(x => x.Element.IsTower && Vector2.Distance(x.Coordinate, node.Coordinate) <= 11);
+                            var affectedTowers = nearbyTowers.Where(x => atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate));
+
+                            processingNodes.Add(new Node(node.Address, node, nNodes.ToList(), nearbyTowers.Count(), affectedTowers.Count()));
+                            nNodes.Clear();
+                        };
                     }
+
+                    swRun.Restart();
                 }
             }
         }
@@ -98,21 +117,33 @@ namespace cOverlay
 
         public override void Render()
         {
+            Vector2 v1 = new Vector2(-291, -73);
+            Vector2 v2 = new Vector2(-281, -68);
             //Any Imgui or Graphics calls go here.This is called after Tick
-            Graphics.DrawTextWithBackground($"{atlasNodes.Count} {nodesToDraw.Count}", new Vector2(200, 200), Color.DarkGray, Color.Red);
+            Graphics.DrawText($"atlas nodes {atlasNodes.Count} \ndraw nodes {processingNodes.Count} " +
+                $"\nrender tick {PluginManager.Plugins.First(x => x.Name == "cOverlay").RenderDebugInformation.TickAverage}" +
+                $"\ntick tick {PluginManager.Plugins.First(x => x.Name == "cOverlay").TickDebugInformation.TickAverage}" +
+                $"\n{Vector2.Distance(v1, v2)}", new Vector2(200, 200), Color.LightGreen);
 
             if (isAtlasPanelOpen)
             {
-                foreach (var nodeObject in nodesToDraw)
+                foreach (var nodeObject in processingNodes)
                 {
-                    var node = nodeObject.NodeElement;
+                    DrawConnections(nodeObject);
+                }
+
+                foreach (var nodeObject in processingNodes)
+                {
+                    var node = nodeObject.NodeObject.Element;
                     DrawNode(node);
                     DrawContent(node);
-                    DrawNodeBackground(node);
-                    DrawNodeText(node);
-                    DrawNodeTowerBackground(nodeObject);
-                    DrawNodeTowerText(nodeObject);
-                    var areaName = node.Area.Name;
+                    DrawNodeMain(nodeObject);
+                    //DrawNodeBackground(node);
+                    //DrawNodeText(node);
+                    DrawNodeTower(nodeObject);
+                    //DrawNodeTowerText(nodeObject);
+                    //DrawTraversal(nodeObject);
+                    //DrawDebug(nodeObject);
                 }
 
                 if (state.OverlayToggle)
@@ -121,59 +152,91 @@ namespace cOverlay
                 }
             }
         }
-
-        public void DrawNodeBackground(AtlasPanelNode node)
-        {
-            var textSize = Graphics.MeasureText(node.Area.Name.ToLower());
-            var padding = state.paddingName;
-            var rounding = state.nodeTextRounding;
-            Graphics.DrawBox(
-                new Vector2(node.Center.X - textSize.X / 2 - padding.X, node.Center.Y - textSize.Y / 2 - padding.Y),
-                new Vector2(node.Center.X + textSize.X / 2 + padding.X, node.Center.Y + textSize.Y / 2 + padding.Y),
-                node.Content.Any(x => x.Name == "Irradiated" || x.Name == "Map Boss" && node.IsCorrupted) ? Color.White : state.BackgroundAreaColor, rounding);
-        }
-
-        public void DrawNodeText(AtlasPanelNode node)
-        {
-            Graphics.DrawText(
-                node.Area.Name,
-                new Vector2(node.Center.X, node.Center.Y),
-                node.Content.Any(x => x.Name == "Irradiated" || x.Name == "Map Boss" && node.IsCorrupted) ? Color.Black : state.DrawTextSameColor ? state.AreaTextColor : state.NameColors[node.Area.Name],
-                ExileCore2.Shared.Enums.FontAlign.VerticalCenter | ExileCore2.Shared.Enums.FontAlign.Center);
-        }
-
         public void DrawNode(AtlasPanelNode node)
         {
             var nodeRadius = state.NodeRadius;
             Graphics.DrawCircleFilled(new Vector2(node.Center.X, node.Center.Y), nodeRadius, state.NodeColors[node.Area.Name], 20);
         }
 
-        public void DrawNodeTowerBackground(Node node)
+        public void DrawNodeMain(Node _node)
         {
-            var nodeElement = node.NodeElement;
+            var node = _node.NodeObject.Element;
+            var textSize = Graphics.MeasureText(node.Area.Name.ToLower());
+            var padding = state.paddingName;
+            var rounding = state.nodeTextRounding;
+            var backgroundRect = new RectangleF(
+                node.Center.X - textSize.X / 2 - padding.X, 
+                node.Center.Y - textSize.Y / 2 - padding.Y,
+                textSize.X + padding.X * 2,
+                textSize.Y + padding.Y * 2);
+
+            Graphics.DrawBox(
+                backgroundRect,
+                node.Content.Any(x => x.Name == "Irradiated" || x.Name == "Map Boss" && node.IsCorrupted) ? Color.White : state.BackgroundAreaColor, 
+                rounding);
+
+            Graphics.DrawText(
+                node.Area.Name,
+                backgroundRect.Center,
+                node.Content.Any(x => x.Name == "Irradiated" || x.Name == "Map Boss" && node.IsCorrupted) ? Color.Black : state.DrawTextSameColor ? state.AreaTextColor : state.NameColors[node.Area.Name],
+                ExileCore2.Shared.Enums.FontAlign.VerticalCenter | ExileCore2.Shared.Enums.FontAlign.Center);
+
+            DrawTraversal(_node, backgroundRect);
+        }
+
+        public void DrawNodeTower(Node node)
+        {
+            var nodeElement = node.NodeObject.Element;
             var resultText = nodeElement.IsTower ? "Tower" : $"{node.AffectedTowersCount}/{node.TowersCount}";
             var textSize = Graphics.MeasureText(resultText);
             var padding = state.paddingTower;
             var rounding = state.towerTextRounding;
-            Graphics.DrawBox(
-                new Vector2(nodeElement.Center.X - textSize.X / 2 - padding.X, nodeElement.Center.Y - textSize.Y / 2 - textSize.Y - padding.Y),
-                new Vector2(nodeElement.Center.X + textSize.X / 2 + padding.X, nodeElement.Center.Y + textSize.Y / 2 - textSize.Y + padding.Y),
-                node.AffectedTowersCount >= state.HighTowerAmountThreshold ? state.HighTowerAmountColorBg : state.BackgroundTowerColor,
-                rounding);
-        }
+            var backgroundRect = new RectangleF(
+                nodeElement.Center.X - textSize.X / 2 - padding.X,
+                nodeElement.Center.Y - textSize.Y / 2 - textSize.Y - padding.Y,
+                textSize.X + padding.X * 2,
+                textSize.Y + padding.Y * 2);
 
-        public void DrawNodeTowerText(Node node)
-        {
-            var nodeElement = node.NodeElement;
-            var resultText = nodeElement.IsTower ? "Tower" : $"{node.AffectedTowersCount}/{node.TowersCount}";
-            var textSize = Graphics.MeasureText(resultText);
-            var padding = new Vector2(3, 2);
+            Graphics.DrawBox(
+                backgroundRect,
+                node.TowersCount >= state.HighTowerAmountThreshold && !node.NodeObject.Element.IsTower ? state.HighTowerAmountColorBg : state.BackgroundTowerColor,
+                rounding);
+
             Graphics.DrawText(
                 resultText,
-                new Vector2(nodeElement.Center.X, nodeElement.Center.Y - textSize.Y),
-                node.AffectedTowersCount >= state.HighTowerAmountThreshold ? state.HighTowerAmountColorTxt : state.TowerTextColor,
+                backgroundRect.Center,
+                node.TowersCount >= state.HighTowerAmountThreshold && !node.NodeObject.Element.IsTower ? state.HighTowerAmountColorTxt : state.TowerTextColor,
                 ExileCore2.Shared.Enums.FontAlign.VerticalCenter | ExileCore2.Shared.Enums.FontAlign.Center);
+
+            //DrawTraversal(node, backgroundRect);
         }
+
+        //public void DrawNodeTowerBackground(Node node)
+        //{
+        //    var nodeElement = node.NodeObject.Element;
+        //    var resultText = nodeElement.IsTower ? "Tower" : $"{node.AffectedTowersCount}/{node.TowersCount}";
+        //    var textSize = Graphics.MeasureText(resultText);
+        //    var padding = state.paddingTower;
+        //    var rounding = state.towerTextRounding;
+        //    Graphics.DrawBox(
+        //        new Vector2(nodeElement.Center.X - textSize.X / 2 - padding.X, nodeElement.Center.Y - textSize.Y / 2 - textSize.Y - padding.Y),
+        //        new Vector2(nodeElement.Center.X + textSize.X / 2 + padding.X, nodeElement.Center.Y + textSize.Y / 2 - textSize.Y + padding.Y),
+        //        node.AffectedTowersCount >= state.HighTowerAmountThreshold ? state.HighTowerAmountColorBg : state.BackgroundTowerColor,
+        //        rounding);
+        //}
+
+        //public void DrawNodeTowerText(Node node)
+        //{
+        //    var nodeElement = node.NodeObject.Element;
+        //    var resultText = nodeElement.IsTower ? "Tower" : $"{node.AffectedTowersCount}/{node.TowersCount}";
+        //    var textSize = Graphics.MeasureText(resultText);
+        //    var padding = new Vector2(3, 2);
+        //    Graphics.DrawText(
+        //        resultText,
+        //        new Vector2(nodeElement.Center.X, nodeElement.Center.Y - textSize.Y),
+        //        node.AffectedTowersCount >= state.HighTowerAmountThreshold ? state.HighTowerAmountColorTxt : state.TowerTextColor,
+        //        ExileCore2.Shared.Enums.FontAlign.VerticalCenter | ExileCore2.Shared.Enums.FontAlign.Center);
+        //}
 
         public void DrawContent(AtlasPanelNode node)
         {
@@ -187,18 +250,23 @@ namespace cOverlay
                 int counter = 0;
                 foreach (var content in nodeContent)
                 {
-                    if (!state.ContentCircleColor.ContainsKey(content.Name))
+                    if (contentSw.ElapsedMilliseconds > 10000)
                     {
-                        state.ContentCircleColor.Add(content.Name, Color.White);
+                        if (!state.ContentCircleColor.ContainsKey(content.Name))
+                        {
+                            state.ContentCircleColor.Add(content.Name, Color.White);
+                        }
+                        if (!state.ContentCircleThickness.ContainsKey(content.Name))
+                        {
+                            state.ContentCircleThickness.Add(content.Name, 4);
+                        }
+                        if (!state.ContentToggle.ContainsKey(content.Name))
+                        {
+                            state.ContentToggle.Add(content.Name, false);
+                        }
+                        contentSw.Restart();
                     }
-                    if (!state.ContentCircleThickness.ContainsKey(content.Name))
-                    {
-                        state.ContentCircleThickness.Add(content.Name, 4);
-                    }
-                    if (!state.ContentToggle.ContainsKey(content.Name))
-                    {
-                        state.ContentToggle.Add(content.Name, false);
-                    }
+
                     if (state.ContentToggle[content.Name])
                     {
                         counter++;
@@ -209,6 +277,36 @@ namespace cOverlay
                             state.ContentCircleThickness[content.Name]);
                     }
                 }
+            }
+        }
+
+        public void DrawDebug(Node node)
+        {
+            var nodeCoords = node.NodeObject.Coordinate;
+            var nodeElement = node.NodeObject.Element;
+            var nodeCenter = nodeElement.Center;
+            Graphics.DrawTextWithBackground(
+                $"x{nodeCoords.X} y{nodeCoords.Y}",
+                new Vector2(nodeCenter.X, nodeCenter.Y + 18),
+                Color.Black,
+                ExileCore2.Shared.Enums.FontAlign.Center | ExileCore2.Shared.Enums.FontAlign.VerticalCenter,
+                Color.Green);
+        }
+
+        public void DrawConnections(Node node)
+        {
+            foreach (var ne in node.neighbourNodes)
+            {
+                if (!ne.Element.IsCompleted)
+                    Graphics.DrawLine(new Vector2(node.NodeObject.Element.Center.X, node.NodeObject.Element.Center.Y), new Vector2(ne.Element.Center.X, ne.Element.Center.Y), state.ConnectionsThickness, state.ConnectionsColor);
+            }
+        }
+
+        public void DrawTraversal(Node node, RectangleF rect)
+        {
+            if (node.NodeObject.Element.CanTraverse)
+            {
+                Graphics.DrawLine(rect.TopLeft, rect.TopRight, 5, Color.Aqua);
             }
         }
 

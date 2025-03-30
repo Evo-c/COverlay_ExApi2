@@ -1,10 +1,7 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
-using System.Linq;
-using ExileCore2.PoEMemory;
+using System.Numerics;
 using ExileCore2.PoEMemory.Elements.AtlasElements;
-using ExileCore2.PoEMemory.FilesInMemory.Atlas;
 
 namespace cOverlay
 {
@@ -44,19 +41,22 @@ namespace cOverlay
     public class Node
     {
         public Node(long address)
-        { this.ID = address; }
-
-        public Node(AtlasPanelNode element, long address, Color _nodeColor, Color _nameColor)
         {
-            this.Name = element.Area.Name;
-            this.NodeElement = element;
             this.ID = address;
         }
 
-        public string Name { get; set; }
+        public Node(long iD, AtlasNodeDescription _node, List<AtlasNodeDescription> neighbourNodes, int towersCount, int affectedTowersCount) : this(iD)
+        {
+            NodeObject = _node;
+            this.neighbourNodes = neighbourNodes;
+            TowersCount = towersCount;
+            AffectedTowersCount = affectedTowersCount;
+        }
+
+        public long ID { get; set; }
+        public AtlasNodeDescription NodeObject { get; set; }
+        public List<AtlasNodeDescription> neighbourNodes { get; set; } = new List<AtlasNodeDescription>();
         public int TowersCount { get; set; }
         public int AffectedTowersCount { get; set; }
-        public AtlasPanelNode NodeElement;
-        public long ID { get; set; }
     }
 }
