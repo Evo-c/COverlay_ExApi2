@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿using System.Linq.Expressions;
+using ImGuiNET;
 
 namespace cOverlay
 {
@@ -29,9 +30,6 @@ namespace cOverlay
 
             if (ImGui.CollapsingHeader("Keybinds"))
             {
-                DrawKeybindLine("AddWaypointKey", ref state.AddWaypointKey, ref state.AddWaypointToggle);
-                DrawKeybindLine("RemoveWaypointKey", ref state.RemoveWaypointKey, ref state.RemoveWaypointToggle);
-                DrawKeybindLine("ShowWaypointPanelKey", ref state.ShowWaypointPanelKey, ref state.ShowWaypointPanelToggle);
             }
 
             if (ImGui.CollapsingHeader("Map settings"))
@@ -53,6 +51,7 @@ namespace cOverlay
             var textTowerColor = ColorConverter.ToVector4(state.TowerTextColor);
             var highTowerAmountColorBg = ColorConverter.ToVector4(state.HighTowerAmountColorBg);
             var highTowerAmountColorTxt = ColorConverter.ToVector4(state.HighTowerAmountColorTxt);
+            var connectionsColor = ColorConverter.ToVector4(state.ConnectionsColor);
 
             ImGui.SliderInt("Node radius", ref state.NodeRadius, 1, 30);
             ImGui.SliderFloat("Area text padding X", ref state.paddingName.X, 0, 10);
@@ -73,6 +72,8 @@ namespace cOverlay
             if (state.DrawTextSameColor)
                 ImGui.ColorEdit4("Area Text Color", ref textAreaColor, bFlags);
             ImGui.ColorEdit4("Tower Text Color", ref textTowerColor, bFlags);
+            ImGui.SliderInt("Connections thickness", ref state.ConnectionsThickness, 1, 5);
+            ImGui.ColorEdit4("Connections Color", ref connectionsColor, bFlags);
 
             state.HighTowerAmountColorBg = ColorConverter.FromVector4(highTowerAmountColorBg);
             state.HighTowerAmountColorTxt = ColorConverter.FromVector4(highTowerAmountColorTxt);
@@ -80,6 +81,7 @@ namespace cOverlay
             state.BackgroundTowerColor = ColorConverter.FromVector4(bgTowerColor);
             state.AreaTextColor = ColorConverter.FromVector4(textAreaColor);
             state.TowerTextColor = ColorConverter.FromVector4(textTowerColor);
+            state.ConnectionsColor = ColorConverter.FromVector4(connectionsColor);
         }
 
         private void RenderOverlay()
@@ -153,6 +155,7 @@ namespace cOverlay
 
                 foreach (var map in state.NodeColors)
                 {
+                    ImGui.PushID(map.Key);
                     var nodeColor = ColorConverter.ToVector4(map.Value);
                     var nameColor = ColorConverter.ToVector4(state.NameColors[map.Key]);
                     var bFlags = ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoLabel;
@@ -167,6 +170,7 @@ namespace cOverlay
 
                     state.NodeColors[map.Key] = ColorConverter.FromVector4(nodeColor);
                     state.NameColors[map.Key] = ColorConverter.FromVector4(nameColor);
+                    ImGui.PopID();
                 }
             }
             ImGui.EndTable();
@@ -175,59 +179,40 @@ namespace cOverlay
         private void DrawContentSettings()
         {
             var tFlags = ImGuiTableFlags.RowBg | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.PreciseWidths;
-            if (ImGui.BeginTable("MapSettings", 3, tFlags))
+            if (ImGui.BeginTable("ContentSettings", 4, tFlags))
             {
                 var cFlags = ImGuiTableColumnFlags.NoHide | ImGuiTableColumnFlags.DefaultSort;
+                ImGui.TableSetupColumn("Enabled", cFlags);
                 ImGui.TableSetupColumn("Name", cFlags);
                 ImGui.TableSetupColumn("Content color", cFlags);
-                ImGui.TableSetupColumn("Outline width", cFlags);
+                ImGui.TableSetupColumn("Circle thickness", cFlags);
                 ImGui.TableHeadersRow();
 
-                for (int row = 0; row < state.ContentSettings.Count; row++)
+                foreach (var content in state.ContentCircleColor)
                 {
+                    ImGui.PushID(content.Key);
+                    var contentColor = ColorConverter.ToVector4(content.Value);
+                    var thickness = state.ContentCircleThickness[content.Key];
+                    var toggle = state.ContentToggle[content.Key];
+                    var bFlags = ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoLabel;
+
+                    ImGui.TableNextColumn();
+                    ImGui.Checkbox("Enabled", ref toggle);
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{content.Key}");
+                    ImGui.TableNextColumn();
+                    ImGui.ColorEdit4("Circle color", ref contentColor, bFlags);
+                    ImGui.TableNextColumn();
+                    ImGui.SliderInt("Circle thickness", ref thickness, 1, 10);
                     ImGui.TableNextRow();
-                    for (int column = 0; column < 3; column++)
-                    {
-                        ImGui.TableSetColumnIndex(column);
-                        ImGui.PushID(state.ContentSettings[row].Type.ToString());
-                        switch (column)
-                        {
-                            case 0:
-                                {
-                                    ImGui.Text(state.ContentSettings[row].Type.ToString());
-                                    break;
-                                }
 
-                            case 1:
-                                {
-                                    var color = ColorConverter.ToVector4(state.ContentSettings[row].ContentColor);
-
-                                    var bFlags = ImGuiColorEditFlags.AlphaPreview | ImGuiColorEditFlags.DisplayRGB | ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoLabel;
-                                    ImGui.ColorEdit4("Node Color", ref color, bFlags);
-
-                                    state.ContentSettings[row].ContentColor = ColorConverter.FromVector4(color);
-
-                                    break;
-                                }
-                            case 2:
-                                {
-                                    var width = state.ContentSettings[row].ContentWidth;
-
-                                    ImGui.SliderFloat("Width", ref width, 1, 5);
-
-                                    state.ContentSettings[row].ContentWidth = width;
-
-                                    break;
-                                }
-
-                            default:
-                                break;
-                        }
-                        ImGui.PopID();
-                    }
+                    state.ContentCircleColor[content.Key] = ColorConverter.FromVector4(contentColor);
+                    state.ContentCircleThickness[content.Key] = thickness;
+                    state.ContentToggle[content.Key] = toggle;
+                    ImGui.PopID();
                 }
-                ImGui.EndTable();
             }
+            ImGui.EndTable();
         }
     }
 }

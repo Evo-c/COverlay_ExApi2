@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using ExileCore2.PoEMemory;
 using ExileCore2.PoEMemory.Elements.AtlasElements;
 using ExileCore2.PoEMemory.FilesInMemory.Atlas;
@@ -49,9 +51,6 @@ namespace cOverlay
             this.Name = element.Area.Name;
             this.NodeElement = element;
             this.ID = address;
-            this.NodeColor = _nodeColor;
-            this.NameColor = _nameColor;
-            this.IsCorrupted = element.IsCorrupted;
         }
 
         public string Name { get; set; }
@@ -59,9 +58,5 @@ namespace cOverlay
         public int AffectedTowersCount { get; set; }
         public AtlasPanelNode NodeElement;
         public long ID { get; set; }
-        public Color NodeColor { get; set; }
-        public Color NameColor { get; set; }
-        public List<Content> Content { get; set; }
-        public bool IsCorrupted;
     }
 }

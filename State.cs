@@ -40,7 +40,7 @@ namespace cOverlay
         public bool RemoveWaypointToggle = false;
         public ImGuiKey ShowWaypointPanelKey = ImGuiKey.F3;
         public bool ShowWaypointPanelToggle = false;
-        public List<Content> ContentSettings = new List<Content>();
+        public List<Content> ContentSettings { get; set; } = new List<Content>();
 
         public int NodeRadius = 20;
         public int borderX = 2400;
@@ -59,9 +59,16 @@ namespace cOverlay
         public Color TowerTextColor = Color.White;
         public bool DrawTextSameColor = false;
         public Color AreaTextColor = Color.White;
+        public Color ConnectionsColor = Color.AliceBlue;
+        public int ConnectionsThickness = 2;
 
         public Dictionary<string, Color> NodeColors = new Dictionary<string, Color>();
         public Dictionary<string, Color> NameColors = new Dictionary<string, Color>();
+
+        public Dictionary<string, int> ContentCircleThickness = new Dictionary<string, int>();
+        public Dictionary<string, Color> ContentCircleColor = new Dictionary<string, Color>();
+        public Dictionary<string, bool> ContentToggle = new Dictionary<string, bool>();
+
         public void Load()
         {
             if (File.Exists(Path.Combine(settingsPath, "StateSettings.json")))
@@ -96,6 +103,12 @@ namespace cOverlay
                     ContentSettings = obj.ContentSettings;
                     NodeColors = obj.NodeColors;
                     NameColors = obj.NameColors;
+
+                    ConnectionsColor = obj.ConnectionsColor;
+                    ConnectionsThickness = obj.ConnectionsThickness;
+                    ContentCircleThickness = obj.ContentCircleThickness;
+                    ContentCircleColor = obj.ContentCircleColor;
+                    ContentToggle = obj.ContentToggle;
                 }
             }
             else
