@@ -26,6 +26,7 @@ namespace cOverlay
         private HashSet<Node> nodesToDraw = new HashSet<Node>();
         private AtlasNodeDescription[] atlasNodes;
         private AtlasNodeDescription[] emptyTowersList;
+        private HashSet<AtlasNodeDescription> towerNodes = new HashSet<AtlasNodeDescription>();
         private HashSet<Node> processingNodes = new HashSet<Node>();
         private (Vector2i, Vector2i, Vector2i, Vector2i, Vector2i)[] atlasPoints;
 
@@ -89,7 +90,7 @@ namespace cOverlay
 
             if (isAtlasPanelOpen)
             {
-                if (swRefresh.ElapsedMilliseconds > 5000 || counter == 0)
+                if (swRefresh.ElapsedMilliseconds > 10000 || counter == 0)
                 {
                     var atlasNodeCount = atlasNodes.Count();
                     var atlasDescCount = atlasPanel.Descriptions.Count;
@@ -105,47 +106,53 @@ namespace cOverlay
                     swRefresh.Restart();
                 }
 
-                if (swRun.ElapsedMilliseconds > 250)
+                if (swRun.ElapsedMilliseconds > 1000)
                 {
                     foreach (var node in atlasNodes)
                     {
                         if (!IsInScreen(node))
                         {
-                            //LogMessage($"Node at {node.Coordinate} IsInScreen:false. Removing");
                             processingNodes.RemoveWhere(x => x.NodeCoords == node.Coordinate);
+                            towerNodes.RemoveWhere(x => x.Coordinate == node.Coordinate);
                             continue;
                         }
 
-                        if (!processingNodes.Any(x => x.NodeCoords == node.Coordinate)
-                            && !node.Element.IsCompleted)
+                        if (!processingNodes.Any(x => x.NodeCoords == node.Coordinate))
                         {
-                            List<AtlasNodeDescription> nNodes = new List<AtlasNodeDescription>();
-
-                            if (state.drawConnections)
+                            if (node.Element.IsTower)
                             {
-                                var point = atlasPoints.FirstOrDefault(x => x.Item1 == node.Coordinate);
-                                foreach (var nd in atlasNodes)
+                                towerNodes.Add(node);
+                            }
+                            if (!node.Element.IsCompleted)
+                            {
+                                List<AtlasNodeDescription> nNodes = new List<AtlasNodeDescription>();
+
+                                if (state.drawConnections)
                                 {
-                                    if (nd.Coordinate == point.Item2 ||
-                                        nd.Coordinate == point.Item3 ||
-                                        nd.Coordinate == point.Item4 ||
-                                        nd.Coordinate == point.Item5)
+                                    var point = atlasPoints.FirstOrDefault(x => x.Item1 == node.Coordinate);
+                                    foreach (var nd in atlasNodes)
                                     {
-                                        if (!nd.Element.IsCompleted)
-                                            nNodes.Add(nd);
+                                        if (nd.Coordinate == point.Item2 ||
+                                            nd.Coordinate == point.Item3 ||
+                                            nd.Coordinate == point.Item4 ||
+                                            nd.Coordinate == point.Item5)
+                                        {
+                                            if (!nd.Element.IsCompleted)
+                                                nNodes.Add(nd);
+                                        }
                                     }
                                 }
+
+                                var towers = atlasNodes.Where(x => x.Element.IsTower);
+                                var nearbyTowers = towers.Where(x => Vector2.Distance(x.Coordinate, node.Coordinate) <= 11).ToArray();
+                                var affectedTowers = nearbyTowers.Where(x => atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate));
+                                emptyTowersList = towerNodes.Where(x => !atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate)).ToArray();
+
+                                //LogMessage($"Node at {node.Coordinate} added to processing");
+                                processingNodes.Add(new Node(node.Coordinate, node, nNodes.ToList(), nearbyTowers.Count(), affectedTowers.Count()));
+                                nNodes.Clear();
                             }
-
-                            var towers = atlasNodes.Where(x => x.Element.IsTower);
-                            var nearbyTowers = towers.Where(x => Vector2.Distance(x.Coordinate, node.Coordinate) <= 11);
-                            var affectedTowers = nearbyTowers.Where(x => atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate));
-                            emptyTowersList = towers.Where(x => !atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate)).ToArray();
-
-                            //LogMessage($"Node at {node.Coordinate} added to processing");
-                            processingNodes.Add(new Node(node.Coordinate, node, nNodes.ToList(), nearbyTowers.Count(), affectedTowers.Count()));
-                            nNodes.Clear();
-                        };
+                        }
                     }
 
                     swRun.Restart();
@@ -185,7 +192,8 @@ namespace cOverlay
                         DrawContent(node);
                         DrawNodeMain(nodeObject);
                         DrawNodeTower(nodeObject);
-                    } else
+                    }
+                    else
                     {
                         Graphics.DrawTextWithBackground("I AM TOWER", new Vector2(node.Center.X, node.Center.Y), Color.Yellow, ExileCore2.Shared.Enums.FontAlign.Center | ExileCore2.Shared.Enums.FontAlign.VerticalCenter, Color.Black);
                     }
@@ -196,8 +204,9 @@ namespace cOverlay
                     }
                 }
 
-                foreach (var tower in emptyTowersList)
+                foreach (var _tower in emptyTowersList)
                 {
+                    var tower = _tower;
                     if (tower.Element.IsCompleted)
                         Graphics.DrawTextWithBackground("MISSING TABLET", new Vector2(tower.Element.Center.X, tower.Element.Center.Y), Color.Red, ExileCore2.Shared.Enums.FontAlign.Center | ExileCore2.Shared.Enums.FontAlign.VerticalCenter, Color.Black);
                 }
