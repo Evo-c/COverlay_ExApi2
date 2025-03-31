@@ -1,7 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Drawing;
 using System.Numerics;
+using ExileCore2.PoEMemory;
+using ExileCore2.PoEMemory.Components;
 using ExileCore2.PoEMemory.Elements.AtlasElements;
+using GameOffsets2.Native;
 
 namespace cOverlay
 {
@@ -40,23 +43,36 @@ namespace cOverlay
 
     public class Node
     {
-        public Node(long address)
+        public Node(Vector2i _coords, AtlasNodeDescription _node, List<AtlasNodeDescription> neighbourNodes, int towersCount, int affectedTowersCount)
         {
-            this.ID = address;
-        }
-
-        public Node(long iD, AtlasNodeDescription _node, List<AtlasNodeDescription> neighbourNodes, int towersCount, int affectedTowersCount) : this(iD)
-        {
+            this.NodeCoords = _coords;
             NodeObject = _node;
             this.neighbourNodes = neighbourNodes;
             TowersCount = towersCount;
             AffectedTowersCount = affectedTowersCount;
         }
 
-        public long ID { get; set; }
+        public Vector2i NodeCoords { get; set; }
         public AtlasNodeDescription NodeObject { get; set; }
         public List<AtlasNodeDescription> neighbourNodes { get; set; } = new List<AtlasNodeDescription>();
         public int TowersCount { get; set; }
         public int AffectedTowersCount { get; set; }
+    }
+
+    public class Waypoint
+    {
+        public Waypoint(float positionX, float positionY, string name, int towersCount, Vector2i coordinates)
+        {
+            PositionX = positionX;
+            PositionY = positionY;
+            Name = name;
+            TowersCount = towersCount;
+            Coordinates = coordinates;
+        }
+        public float PositionX  { get; set; }
+        public float PositionY { get; set; }
+        public string Name { get; set; }
+        public int TowersCount { get; set; }
+        public Vector2i Coordinates { get; set; }
     }
 }

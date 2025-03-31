@@ -1,5 +1,7 @@
-﻿using System.Linq.Expressions;
+﻿using System.Numerics;
+using System.Runtime.CompilerServices;
 using ImGuiNET;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace cOverlay
 {
@@ -14,17 +16,12 @@ namespace cOverlay
         {
             if (ImGui.CollapsingHeader("General"))
             {
-                ImGui.Checkbox("Toggle overlay", ref state.OverlayToggle);
                 if (ImGui.Button("Save settings"))
                 {
                     state.Save();
                 }
                 ImGui.SliderInt("BorderX", ref state.borderX, 500, 2500);
                 ImGui.SliderInt("BorderY", ref state.borderY, 500, 1400);
-                if (ImGui.Button("Clear nodest list"))
-                {
-                    ClearAtlasNodes(ref atlasNodes);
-                }
             }
 
             if (ImGui.CollapsingHeader("Style settings"))
@@ -34,6 +31,8 @@ namespace cOverlay
 
             if (ImGui.CollapsingHeader("Keybinds"))
             {
+                ImGui.Text("Add waypoint key " + state.AddWaypointKey.ToString());
+                ImGui.Text("Remove waypoint key " + state.RemoveWaypointKey.ToString());
             }
 
             if (ImGui.CollapsingHeader("Map settings"))
@@ -45,6 +44,122 @@ namespace cOverlay
             {
                 DrawContentSettings();
             }
+
+            if (ImGui.CollapsingHeader("Waypoints"))
+            {
+                ImGui.SliderFloat("Waypoint menu position x", ref state.WaypointWindowPos.X, 0, 1920, "x = %.0f");
+                ImGui.SliderFloat("Waypoint menu position y", ref state.WaypointWindowPos.Y, 0, 1080, "y = %.0f");
+                ImGui.Checkbox("Show waypoint menu", ref state.ShowWaypointMenu);
+            }
+        }
+
+        private void CenterText(string text)
+        {
+            //ImGui.TableSetColumnIndex(ImGui.GetColumnIndex() + 1);
+            var textSize = ImGui.CalcTextSize(text);
+            var cellSize = new Vector2(ImGui.GetColumnWidth(), 35);
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + (cellSize.X - textSize.X) * 0.5f);
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (cellSize.Y - textSize.Y) * 0.5f);
+        }
+
+        private void DrawWaypointMenu()
+        {
+            var mFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize;
+            var window = GameController.Window.GetWindowRectangleTimeCache.TopRight;
+
+            if (ImGui.Begin("Waypoint menu", ref state.ShowWaypointMenu, mFlags))
+            {
+                ImGui.SetWindowPos(state.WaypointWindowPos);
+                var tFlags = ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.RowBg;
+                if (ImGui.BeginTable("Waypoints", 6, tFlags))
+                {
+                    var cFlags = ImGuiTableColumnFlags.NoClip | ImGuiTableColumnFlags.WidthFixed;
+                    ImGui.TableSetupColumn("   imbo   ", cFlags);
+
+                    ImGui.TableSetupColumn(" Towers ", cFlags);
+
+                    ImGui.TableSetupColumn("       Name       ", cFlags);
+
+                    ImGui.TableSetupColumn("Dist", cFlags);
+
+                    ImGui.TableSetupColumn("", cFlags);
+
+                    ImGui.TableSetupColumn(" ", cFlags);
+
+                    ImGui.TableHeadersRow();
+
+                    foreach (var waypoint in state.WaypointList)
+                    {
+                        ImGui.PushID(waypoint.PositionX.ToString());
+
+                        ImGui.TableNextColumn();
+                        CenterText("Move to");
+                        if (ImGui.Button("Move to"))
+                        {
+                            DeleteWaypoint(new Vector2(waypoint.PositionX, waypoint.PositionY));
+                        }
+
+                        ImGui.TableNextColumn();
+                        CenterText(waypoint.TowersCount.ToString());
+                        ImGui.Text(waypoint.TowersCount.ToString());
+
+                        ImGui.TableNextColumn();
+                        CenterText(waypoint.Name);
+                        ImGui.Text(waypoint.Name);
+
+                        ImGui.TableNextColumn();
+                        DrawWorldDirectionIndicator(
+                            new Vector2(waypoint.PositionX, -waypoint.PositionY),
+                            new Vector2(atlasPanel.Camera.Snapshot.Matrix.Translation.X, -atlasPanel.Camera.Snapshot.Matrix.Translation.Y)
+                            );
+                        ImGui.TableNextColumn();
+
+                        CenterText("[X]");
+                        if (ImGui.Button("[X]"))
+                        {
+                            DeleteWaypoint(new Vector2(waypoint.PositionX, waypoint.PositionY));
+                        }
+
+                        ImGui.TableNextRow();
+
+                        ImGui.PopID();
+                    }
+                }
+                ImGui.EndTable();
+            }
+
+            ImGui.End();
+        }
+
+        public void DrawWorldDirectionIndicator(Vector2 worldCoord1, Vector2 worldCoord2)
+        {
+            // Calculate direction vector
+            Vector2 direction = worldCoord2 - worldCoord1;
+            float distance = direction.Length();
+            direction = Vector2.Normalize(direction);
+            CenterText($"{distance / 1000:N0}");
+            ImGui.Text($"{distance / 1000:N0}");
+            ImGui.TableNextColumn();
+            ImGui.TableSetColumnIndex(4);
+            // Draw small arrow widget
+            Vector2 arrowSize = new Vector2(45, 45); // Size of our indicator
+            Vector2 center = ImGui.GetCursorScreenPos() + arrowSize / 2;
+
+            ImDrawListPtr drawList = ImGui.GetWindowDrawList();
+
+            // Main direction line
+            Vector2 arrowEnd = center + direction * (arrowSize.X / 2 - 5);
+            drawList.AddLine(center, arrowEnd, ImGui.GetColorU32(ImGuiCol.Text), 2f);
+
+            // Arrowhead
+            Vector2 perp = new Vector2(-direction.Y, direction.X);
+            drawList.AddTriangleFilled(
+                arrowEnd,
+                arrowEnd - direction * 10 + perp * 5,
+                arrowEnd - direction * 10 - perp * 5,
+                ImGui.GetColorU32(ImGuiCol.Text)
+            );
+            ImGui.Dummy(new Vector2(30, 40));
         }
 
         private void DrawStyleSettings()
@@ -86,25 +201,6 @@ namespace cOverlay
             state.AreaTextColor = ColorConverter.FromVector4(textAreaColor);
             state.TowerTextColor = ColorConverter.FromVector4(textTowerColor);
             state.ConnectionsColor = ColorConverter.FromVector4(connectionsColor);
-        }
-
-        private void RenderOverlay()
-        {
-            var wFlags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.AlwaysAutoResize;
-            ImGui.Begin("Overlay", wFlags);
-            ImGui.Text("Atlas node 1");
-            ImGui.SameLine();
-            ImGui.Button("Move to atlas node");
-
-            ImGui.Text("Atlas node 2");
-            ImGui.SameLine();
-            ImGui.Button("Move to atlas node");
-
-            ImGui.Text("Atlas node 3");
-            ImGui.SameLine();
-            ImGui.Button("Move to atlas node");
-
-            ImGui.End();
         }
 
         private void DrawKeybindLine(string description, ref ImGuiKey keybind, ref bool menuToggle)

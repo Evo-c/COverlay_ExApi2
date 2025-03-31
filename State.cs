@@ -26,23 +26,18 @@ namespace cOverlay
 
         public static string settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "MDK", "cOverlay");
 
-        public bool OverlayToggle = false;
-        public bool IsRunning = true;
-        public bool ShowMainMenu = true;
 
         public ImGuiKey RefreshAtlasKey = ImGuiKey.F4;
-        public bool RefreshAtlasKeyToggle = false;
         public ImGuiKey OpenKey = ImGuiKey.F12;
-        public bool OpenKeyToggle = false;
         public ImGuiKey AddWaypointKey = ImGuiKey.F1;
-        public bool AddWaypointToggle = false;
         public ImGuiKey RemoveWaypointKey = ImGuiKey.F2;
-        public bool RemoveWaypointToggle = false;
         public ImGuiKey ShowWaypointPanelKey = ImGuiKey.F3;
-        public bool ShowWaypointPanelToggle = false;
         public List<Content> ContentSettings { get; set; } = new List<Content>();
+        public bool ShowWaypointMenu = false;
+        public List<Waypoint> WaypointList { get; set; } = new List<Waypoint>();
         public bool drawDebug = false;
         public bool drawConnections = false;
+        public Vector2 WaypointWindowPos = new Vector2(100, 100);
 
         public int NodeRadius = 20;
         public int borderX = 2400;
@@ -77,24 +72,21 @@ namespace cOverlay
             {
                 var obj = SerializationApi.Deserialize<State>(Path.Combine(settingsPath, "StateSettings.json"));
                 if (obj != null)
-                {
-                    OverlayToggle = obj.OverlayToggle;
-                    IsRunning = obj.IsRunning;
-                    ShowMainMenu = obj.ShowMainMenu;
-
+                {     
                     RefreshAtlasKey = obj.RefreshAtlasKey;
-                    RefreshAtlasKeyToggle = obj.RefreshAtlasKeyToggle;
                     OpenKey = obj.OpenKey;
-                    OpenKeyToggle = obj.OpenKeyToggle;
                     AddWaypointKey = obj.AddWaypointKey;
-                    AddWaypointToggle = obj.AddWaypointToggle;
                     RemoveWaypointKey = obj.RemoveWaypointKey;
-                    RemoveWaypointToggle = obj.RemoveWaypointToggle;
                     ShowWaypointPanelKey = obj.ShowWaypointPanelKey;
-                    ShowWaypointPanelToggle = obj.ShowWaypointPanelToggle;
+                    ShowWaypointMenu = obj.ShowWaypointMenu;
+                    WaypointWindowPos = obj.WaypointWindowPos;
 
                     borderX = obj.borderX;
                     borderY = obj.borderY;
+
+                    drawConnections = obj.drawConnections;
+                    drawDebug = obj.drawDebug;
+                    WaypointList = obj.WaypointList;
 
                     paddingName = obj.paddingName;
                     paddingTower = obj.paddingTower;
