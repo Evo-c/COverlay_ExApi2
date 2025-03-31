@@ -41,6 +41,8 @@ namespace cOverlay
         public ImGuiKey ShowWaypointPanelKey = ImGuiKey.F3;
         public bool ShowWaypointPanelToggle = false;
         public List<Content> ContentSettings { get; set; } = new List<Content>();
+        public bool drawDebug = false;
+        public bool drawConnections = false;
 
         public int NodeRadius = 20;
         public int borderX = 2400;

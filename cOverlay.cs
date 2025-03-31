@@ -25,11 +25,13 @@ namespace cOverlay
         public Stopwatch swRefresh = Stopwatch.StartNew();
         public Stopwatch contentSw = Stopwatch.StartNew();
         public Stopwatch swRun = Stopwatch.StartNew();
+        private AtlasPanel atlasPanel;
 
         public override bool Initialise()
         {
             state.Init();
             state.Load();
+            atlasPanel = GameController.IngameState.IngameUi.WorldMap.AtlasPanel;
 
             return true;
         }
@@ -44,30 +46,37 @@ namespace cOverlay
 
         public bool IsInScreen(AtlasNodeDescription node)
         {
-            var nodeElement = node.Element;
-            return nodeElement.Center.X > 0 && nodeElement.Center.X < state.borderX && nodeElement.Center.Y > 0 && nodeElement.Center.Y < state.borderY;
+            var nodeElement = node.Element.Center;
+            return nodeElement.X > 0 && nodeElement.X < state.borderX && nodeElement.Y > 0 && nodeElement.Y < state.borderY;
         }
-
+        public void ClearAtlasNodes(ref HashSet<AtlasNodeDescription> _atlasNodes)
+        {
+            _atlasNodes.Clear();
+        }
         public override void Tick()
         {
-            var atlasPanel = GameController.IngameState.IngameUi.WorldMap.AtlasPanel;
             isAtlasPanelOpen = atlasPanel.IsVisible;
             var counter = 0;
             if (isAtlasPanelOpen)
             {
-                if (swRefresh.ElapsedMilliseconds > 10000 || counter < 1)
+                if (swRefresh.ElapsedMilliseconds > 5000 || counter == 0)
                 {
-                    foreach (var node in atlasPanel.Descriptions)
+                    var atlasNodeCount = atlasNodes.Count;
+                    var atlasDescCount = atlasPanel.Descriptions.Count;
+                    if (atlasNodeCount < atlasDescCount)
                     {
-                        atlasNodes.Add(node);
+                        atlasNodes = new HashSet<AtlasNodeDescription>(atlasPanel.Descriptions);
+                        atlasPoints = new HashSet<(Vector2i, Vector2i, Vector2i, Vector2i, Vector2i)>(atlasPanel.Points);
+
+                        counter++;
                     }
 
-                    foreach (var point in atlasPanel.Points)
-                    {
-                        atlasPoints.Add(point);
-                    }
+                    //if (atlasNodeCount > atlasDescCount)
+                    //{
+                    //    atlasNodes.Clear();
+                    //    atlasPoints.Clear();
+                    //}
 
-                    counter++;
                     swRefresh.Restart();
                 }
 
@@ -81,7 +90,6 @@ namespace cOverlay
                             continue;
                         }
 
-                        //LogMsg(processingNodes.Count.ToString());
                         if (!processingNodes.Any(x => x.ID == node.Address)
                             && !node.Element.IsCompleted)
                         {
@@ -102,6 +110,7 @@ namespace cOverlay
                             var nearbyTowers = atlasNodes.Where(x => x.Element.IsTower && Vector2.Distance(x.Coordinate, node.Coordinate) <= 11);
                             var affectedTowers = nearbyTowers.Where(x => atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate));
 
+                            //LogMessage($"Node at {node.Coordinate} added to processing");
                             processingNodes.Add(new Node(node.Address, node, nNodes.ToList(), nearbyTowers.Count(), affectedTowers.Count()));
                             nNodes.Clear();
                         };
@@ -123,7 +132,8 @@ namespace cOverlay
             Graphics.DrawText($"atlas nodes {atlasNodes.Count} \ndraw nodes {processingNodes.Count} " +
                 $"\nrender tick {PluginManager.Plugins.First(x => x.Name == "cOverlay").RenderDebugInformation.TickAverage}" +
                 $"\ntick tick {PluginManager.Plugins.First(x => x.Name == "cOverlay").TickDebugInformation.TickAverage}" +
-                $"\n{Vector2.Distance(v1, v2)}", new Vector2(200, 200), Color.LightGreen);
+                $"\n{Vector2.Distance(v1, v2)}" +
+                $"\n atlasDesc {atlasPanel.Descriptions.Count}", new Vector2(200, 200), Color.LightGreen);
 
             if (isAtlasPanelOpen)
             {
@@ -143,7 +153,10 @@ namespace cOverlay
                     DrawNodeTower(nodeObject);
                     //DrawNodeTowerText(nodeObject);
                     //DrawTraversal(nodeObject);
-                    //DrawDebug(nodeObject);
+                    if (state.drawDebug)
+                    {
+                        DrawDebug(nodeObject);
+                    }
                 }
 
                 if (state.OverlayToggle)
@@ -152,6 +165,7 @@ namespace cOverlay
                 }
             }
         }
+
         public void DrawNode(AtlasPanelNode node)
         {
             var nodeRadius = state.NodeRadius;
@@ -165,14 +179,14 @@ namespace cOverlay
             var padding = state.paddingName;
             var rounding = state.nodeTextRounding;
             var backgroundRect = new RectangleF(
-                node.Center.X - textSize.X / 2 - padding.X, 
+                node.Center.X - textSize.X / 2 - padding.X,
                 node.Center.Y - textSize.Y / 2 - padding.Y,
                 textSize.X + padding.X * 2,
                 textSize.Y + padding.Y * 2);
 
             Graphics.DrawBox(
                 backgroundRect,
-                node.Content.Any(x => x.Name == "Irradiated" || x.Name == "Map Boss" && node.IsCorrupted) ? Color.White : state.BackgroundAreaColor, 
+                node.Content.Any(x => x.Name == "Irradiated" || x.Name == "Map Boss" && node.IsCorrupted) ? Color.White : state.BackgroundAreaColor,
                 rounding);
 
             Graphics.DrawText(
@@ -286,7 +300,9 @@ namespace cOverlay
             var nodeElement = node.NodeObject.Element;
             var nodeCenter = nodeElement.Center;
             Graphics.DrawTextWithBackground(
-                $"x{nodeCoords.X} y{nodeCoords.Y}",
+                $"x{nodeCoords.X} y{nodeCoords.Y}" +
+                $"\nx{nodeElement.X} y{nodeElement.Y}" +
+                $"\ncenter x{nodeCenter.X} y{nodeCenter.Y}",
                 new Vector2(nodeCenter.X, nodeCenter.Y + 18),
                 Color.Black,
                 ExileCore2.Shared.Enums.FontAlign.Center | ExileCore2.Shared.Enums.FontAlign.VerticalCenter,

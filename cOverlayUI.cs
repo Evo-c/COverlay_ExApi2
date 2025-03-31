@@ -20,7 +20,11 @@ namespace cOverlay
                     state.Save();
                 }
                 ImGui.SliderInt("BorderX", ref state.borderX, 500, 2500);
-                ImGui.SliderInt("BorderX", ref state.borderY, 500, 1400);
+                ImGui.SliderInt("BorderY", ref state.borderY, 500, 1400);
+                if (ImGui.Button("Clear nodest list"))
+                {
+                    ClearAtlasNodes(ref atlasNodes);
+                }
             }
 
             if (ImGui.CollapsingHeader("Style settings"))
@@ -145,6 +149,8 @@ namespace cOverlay
         private void DrawMapSettings()
         {
             var tFlags = ImGuiTableFlags.RowBg | ImGuiTableFlags.NoHostExtendX | ImGuiTableFlags.PreciseWidths;
+            ImGui.Checkbox("Draw Debug", ref state.drawDebug);
+            ImGui.Checkbox("Draw Connections", ref state.drawConnections);
             if (ImGui.BeginTable("MapSettings", 3, tFlags))
             {
                 var cFlags = ImGuiTableColumnFlags.NoHide | ImGuiTableColumnFlags.DefaultSort;
