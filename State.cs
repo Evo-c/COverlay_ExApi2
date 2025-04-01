@@ -81,7 +81,8 @@ namespace cOverlay
 
         // Debug
 
-        public bool DebugDrawCoordinates = true;
+        public bool DebugDrawPerfomance = false;
+        public bool DebugDrawCoordinates = false;
         public bool DebugDrawContentAmount = false;
         public bool DebugDrawContentNames = false;
         public bool DebugDrawAttempted = false;

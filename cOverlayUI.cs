@@ -285,6 +285,7 @@ namespace cOverlay
             ImGui.Checkbox("Draw Debug", ref state.drawDebug);
             if (state.drawDebug)
             {
+                ImGui.Checkbox("Draw perfomance", ref state.DebugDrawPerfomance);
                 ImGui.Checkbox("Draw coordinates", ref state.DebugDrawCoordinates);
                 ImGui.Checkbox("Draw position", ref state.DebugDrawNodePosition);
                 ImGui.Checkbox("Draw center position", ref state.DebugDrawNodeCenterPosition);

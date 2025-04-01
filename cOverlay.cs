@@ -155,12 +155,6 @@ namespace cOverlay
                 DrawWaypointPanel();
             }
 
-            Graphics.DrawText($"atlas nodes {atlasNodes.Count()} \ndraw nodes {processingNodes.Count} " +
-                $"\nrender tick {PluginManager.Plugins.First(x => x.Name == "cOverlay").RenderDebugInformation.TickAverage}" +
-                $"\ntick tick {PluginManager.Plugins.First(x => x.Name == "cOverlay").TickDebugInformation.TickAverage}" +
-                $"\n atlasDesc {atlasPanel.Descriptions.Count}" +
-                $"\n{atlasPanel.Camera.Snapshot.Matrix.Translation}", new Vector2(200, 200), Color.LightGreen);
-
             if (atlasPanel.IsVisible)
             {
                 if (state.drawConnections)
@@ -319,6 +313,17 @@ namespace cOverlay
             var nodeCenter = nodeElement.Center;
             var resultText = "";
 
+            if (state.DebugDrawPerfomance)
+            {
+                Graphics.DrawText($"atlas nodes {atlasNodes.Count()} " +
+                   $"\ndraw nodes {processingNodes.Count} " +
+                   $"\nrender ms {PluginManager.Plugins.First(x => x.Name == "cOverlay").RenderDebugInformation.TickAverage}" +
+                   $"\ntick m,s {PluginManager.Plugins.First(x => x.Name == "cOverlay").TickDebugInformation.TickAverage}" +
+                   $"\natlasDesc {atlasPanel.Descriptions.Count}" +
+                   $"\n{atlasPanel.Camera.Snapshot.Matrix.Translation}",
+                   new Vector2(200, 200),
+                   Color.LightGreen);
+            }
             if (state.DebugDrawCoordinates)
             {
                 if (counter > 0)
