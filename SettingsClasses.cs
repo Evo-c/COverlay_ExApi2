@@ -69,7 +69,8 @@ namespace cOverlay
             TowersCount = towersCount;
             Coordinates = coordinates;
         }
-        public float PositionX  { get; set; }
+
+        public float PositionX { get; set; }
         public float PositionY { get; set; }
         public string Name { get; set; }
         public int TowersCount { get; set; }

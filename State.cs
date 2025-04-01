@@ -4,17 +4,8 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using ExileCore2;
-using ImGuiNET;
-using Microsoft.CSharp;
-using Microsoft.VisualBasic.Logging;
-using static System.Windows.Forms.AxHost;
-
+using System.Windows.Forms;
+using AutoMapper;
 
 namespace cOverlay
 {
@@ -26,83 +17,92 @@ namespace cOverlay
 
         public static string settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "MDK", "cOverlay");
 
+        // Keybinds
 
-        public ImGuiKey RefreshAtlasKey = ImGuiKey.F4;
-        public ImGuiKey OpenKey = ImGuiKey.F12;
-        public ImGuiKey AddWaypointKey = ImGuiKey.F1;
-        public ImGuiKey RemoveWaypointKey = ImGuiKey.F2;
-        public ImGuiKey ShowWaypointPanelKey = ImGuiKey.F3;
-        public List<Content> ContentSettings { get; set; } = new List<Content>();
-        public bool ShowWaypointMenu = false;
-        public List<Waypoint> WaypointList { get; set; } = new List<Waypoint>();
+        public Keys KeybindCreateWaypoint = Keys.F1;
+        public Keys KeybindShowWaypointPanel = Keys.F2;
+        public Keys KeybindSaveSettings = Keys.F3;
+        public Keys KeybindRefreshNodes = Keys.F4;
+
+        // Draw toggles
+
         public bool drawDebug = false;
         public bool drawConnections = false;
-        public Vector2 WaypointWindowPos = new Vector2(100, 100);
 
-        public int NodeRadius = 20;
-        public int borderX = 2400;
-        public int borderY = 1300;
-        public Vector2 paddingName = new Vector2(3, 2);
-        public Vector2 paddingTower  = new Vector2(3, 2);
-        public int nodeTextRounding = 3;
-        public int towerTextRounding = 3;
+        // Colors
 
-        public int HighTowerAmountThreshold = 5;
-        public Color HighTowerAmountColorBg = Color.White;
-        public Color HighTowerAmountColorTxt = Color.Black;
-
-        public Color BackgroundAreaColor = Color.Black;
-        public Color BackgroundTowerColor = Color.Black;
-        public Color TowerTextColor = Color.White;
-        public bool DrawTextSameColor = false;
         public Color AreaTextColor = Color.White;
         public Color ConnectionsColor = Color.AliceBlue;
+        public Color BackgroundAreaColor = Color.Black;
+        public Color TowerTextColor = Color.White;
+        public Color HighTowerAmountColorBg = Color.White;
+        public Color HighTowerAmountColorTxt = Color.Black;
+        public Color traversalColor = Color.FromArgb(255, 108, 180, 235);
+        public Color untraversalColor = Color.Gray;
+
+        // Style settings
+
+        public int HighTowerAmountThreshold = 5;
+        public Vector2 paddingName = new Vector2(3, 2);
         public int ConnectionsThickness = 2;
+        public int nodeTextRounding = 3;
+        public int NodeRadius = 20;
+        public int traversalTransparency = 90;
+        public int nodeRadiusTrash = 15;
+        public bool showTowersAtName = true;
+
+        // Node settings
 
         public Dictionary<string, Color> NodeColors = new Dictionary<string, Color>();
         public Dictionary<string, Color> NameColors = new Dictionary<string, Color>();
 
-        public Dictionary<string, int> ContentCircleThickness = new Dictionary<string, int>();
-        public Dictionary<string, Color> ContentCircleColor = new Dictionary<string, Color>();
+        // General Settings
+
+        public int borderX = 2400;
+        public int borderY = 1300;
+        public int atlasRefreshRate = 10000;
+        public int screnRefreshRate = 1000;
+
+        // Content
+
+        public bool ToggleGemling = true;
+        public Color GemlingColor = Color.Orange;
+        public int ContentCircleThickness = 2;
+        public int GapRadius = 5;
         public Dictionary<string, bool> ContentToggle = new Dictionary<string, bool>();
+        public Dictionary<string, Color> ContentCircleColor = new Dictionary<string, Color>();
+        public List<Content> ContentSettings { get; set; } = new List<Content>();
+
+        // Waypoints
+
+        public bool ShowWaypointMenu = false;
+        public Vector2 WaypointWindowPos = new Vector2(100, 100);
+        public List<Waypoint> WaypointList { get; set; } = new List<Waypoint>();
+
+        // Debug
+
+        public bool DebugDrawCoordinates = true;
+        public bool DebugDrawContentAmount = false;
+        public bool DebugDrawContentNames = false;
+        public bool DebugDrawAttempted = false;
+        public bool DebugDrawNodePosition = false;
+        public bool DebugDrawNodeCenterPosition = false;
+
+        // ---------------
 
         public void Load()
         {
             if (File.Exists(Path.Combine(settingsPath, "StateSettings.json")))
             {
+                var config = new MapperConfiguration(cfg => cfg.CreateMap<State, State>());
+                var mapper = config.CreateMapper();
+
                 var obj = SerializationApi.Deserialize<State>(Path.Combine(settingsPath, "StateSettings.json"));
                 if (obj != null)
-                {     
-                    RefreshAtlasKey = obj.RefreshAtlasKey;
-                    OpenKey = obj.OpenKey;
-                    AddWaypointKey = obj.AddWaypointKey;
-                    RemoveWaypointKey = obj.RemoveWaypointKey;
-                    ShowWaypointPanelKey = obj.ShowWaypointPanelKey;
-                    ShowWaypointMenu = obj.ShowWaypointMenu;
-                    WaypointWindowPos = obj.WaypointWindowPos;
-
-                    borderX = obj.borderX;
-                    borderY = obj.borderY;
-
-                    drawConnections = obj.drawConnections;
-                    drawDebug = obj.drawDebug;
-                    WaypointList = obj.WaypointList;
-
-                    paddingName = obj.paddingName;
-                    paddingTower = obj.paddingTower;
-                    nodeTextRounding = obj.nodeTextRounding;
-                    towerTextRounding = obj.towerTextRounding;
-                    NodeRadius = obj.NodeRadius;
-
-                    ContentSettings = obj.ContentSettings;
-                    NodeColors = obj.NodeColors;
-                    NameColors = obj.NameColors;
-
-                    ConnectionsColor = obj.ConnectionsColor;
-                    ConnectionsThickness = obj.ConnectionsThickness;
-                    ContentCircleThickness = obj.ContentCircleThickness;
-                    ContentCircleColor = obj.ContentCircleColor;
-                    ContentToggle = obj.ContentToggle;
+                {
+                    mapper.Map(obj, this);
+                    NodeColors = obj.NodeColors.OrderBy(x => x.Key).ToDictionary<string, Color>();
+                    NameColors = obj.NameColors.OrderBy(x => x.Key).ToDictionary<string, Color>();
                 }
             }
             else
@@ -135,7 +135,6 @@ namespace cOverlay
             var obj = SerializationApi.Deserialize<State>(Path.Combine(settingsPath, "StateSettings.json"));
             if (obj != null)
             {
-
                 if (obj.ContentSettings.Count < (Content.ContentType.Count()))
                 {
                     foreach (var content in Content.ContentType)
@@ -146,10 +145,8 @@ namespace cOverlay
                         }
                     }
                 }
-
                 SerializationApi.Serialize<State>(obj, Path.Combine(Path.Combine(settingsPath, "StateSettings.json")));
             }
         }
-
     }
 }

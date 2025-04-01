@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace cOverlay
 {
-    public class ColorConverter
+    public static class ColorConverter
     {
         public static System.Numerics.Vector4 ToVector4(Color color)
         {
