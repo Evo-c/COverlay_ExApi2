@@ -7,8 +7,6 @@ namespace cOverlay
 {
     public partial class cOverlay
     {
-        private static bool waitingForKey = false;
-
         [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int vKey);
 
@@ -326,21 +324,6 @@ namespace cOverlay
             ImGui.Dummy(new Vector2(30, 40));
         }
 
-        private static string keyToChange = "";
-
-        private void CaptureKeyPress(ref Keys key)
-        {
-            for (int i = 0; i < 256; i++)
-            {
-                if ((GetAsyncKeyState(i) & 0x8000) != 0)
-                {
-                    key = (Keys)i;
-                    waitingForKey = false;
-                    break;
-                }
-            }
-        }
-
         private void CenterText(string text)
         {
             //ImGui.TableSetColumnIndex(ImGui.GetColumnIndex() + 1);
@@ -363,6 +346,8 @@ namespace cOverlay
             }
         }
 
+        private static string keyToChange = "";
+        private static bool waitingForKey = false;
         private void DrawKeybindRow(string label, ref Keys key)
         {
             ImGui.Text($"{label}");
@@ -380,6 +365,18 @@ namespace cOverlay
                 CaptureKeyPress(ref key);
             }
             ImGui.PopID();
+        }
+        private void CaptureKeyPress(ref Keys key)
+        {
+            for (int i = 0; i < 256; i++)
+            {
+                if ((GetAsyncKeyState(i) & 0x8000) != 0)
+                {
+                    key = (Keys)i;
+                    waitingForKey = false;
+                    break;
+                }
+            }
         }
     }
 }

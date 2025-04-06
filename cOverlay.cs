@@ -43,6 +43,15 @@ namespace cOverlay
             processingNodes = [];
         }
 
+        public bool IsTower(AtlasPanelNode node)
+        {
+            return node.Area.Name == "Bluff"
+                                || node.Area.Name == "Lost Towers"
+                                || node.Area.Name == "Sinking Spire"
+                                || node.Area.Name == "Mesa"
+                                || node.Area.Name == "Alpine Ridge";
+        }
+
         public override void Tick()
         {
             var counter = 0;
@@ -77,10 +86,10 @@ namespace cOverlay
 
                         if (!processingNodes.Any(x => x.NodeCoords == node.Coordinate))
                         {
-                            if (node.Element.IsTower && node.Element.IsCompleted)
-                            {
-                                towerNodes.Add(node);
-                            }
+                            //if (IsTower(node.Element) && node.Element.IsCompleted)
+                            //{
+                            //    towerNodes.Add(node);
+                            //}
                             if (!node.Element.IsCompleted)
                             {
                                 List<AtlasNodeDescription> nNodes = new List<AtlasNodeDescription>();
@@ -101,7 +110,22 @@ namespace cOverlay
                                     }
                                 }
 
-                                var towers = atlasNodes.Where(x => x.Element.IsTower);
+                                if (!state.NodeColors.ContainsKey(node.Element.Area.Name))
+                                {
+                                    state.NodeColors.Add(node.Element.Area.Name, Color.Blue);
+                                    state.Save();
+                                    state.Load();
+                                }
+
+                                if (!state.NameColors.ContainsKey(node.Element.Area.Name))
+                                {
+                                    state.NameColors.Add(node.Element.Area.Name, Color.White);
+                                    state.Save();
+                                    state.Load();
+                                }
+
+                                var towers = atlasNodes.Where(x =>
+                                IsTower(x.Element));
                                 var nearbyTowers = towers.Where(x => Vector2.Distance(x.Coordinate, node.Coordinate) <= 11).ToArray();
                                 var affectedTowers = nearbyTowers.Where(x => atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate));
                                 emptyTowersList = towerNodes.Where(x => !atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate)).ToArray();
@@ -164,11 +188,21 @@ namespace cOverlay
                         DrawConnections(nodeObject);
                     }
                 }
-
+                if (state.DebugDrawPerfomance)
+                {
+                    Graphics.DrawText($"atlas nodes {atlasNodes.Count()} " +
+                       $"\ndraw nodes {processingNodes.Count} " +
+                       $"\nrender ms {PluginManager.Plugins.First(x => x.Name == "cOverlay").RenderDebugInformation.TickAverage}" +
+                       $"\ntick m,s {PluginManager.Plugins.First(x => x.Name == "cOverlay").TickDebugInformation.TickAverage}" +
+                       $"\natlasDesc {atlasPanel.Descriptions.Count}" +
+                       $"\n{atlasPanel.Camera.Snapshot.Matrix.Translation}",
+                       new Vector2(200, 200),
+                       Color.LightGreen);
+                }
                 foreach (var nodeObject in processingNodes)
                 {
                     var node = nodeObject.NodeObject.Element;
-                    if (!node.IsTower)
+                    if (!IsTower(node))
                     {
                         if (nodeObject.TowersCount >= state.HighTowerAmountThreshold && !nodeObject.NodeObject.Element.IsVisited)
                         {
@@ -234,7 +268,7 @@ namespace cOverlay
 
             Graphics.DrawBox(
                 backgroundRect,
-                _node.TowersCount == _node.AffectedTowersCount && !node.IsTower ? state.HighTowerAmountColorBg : state.NodeColors[node.Area.Name]
+                _node.TowersCount == _node.AffectedTowersCount && !IsTower(node) ? state.HighTowerAmountColorBg : state.NodeColors[node.Area.Name]
                 /*node.Content.Any(x => x.Name == "Irradiated" || x.Name == "Map Boss" && node.IsCorrupted) ? Color.White : state.NodeColors[node.Area.Name]*/,
                 rounding);
 
@@ -313,17 +347,6 @@ namespace cOverlay
             var nodeCenter = nodeElement.Center;
             var resultText = "";
 
-            if (state.DebugDrawPerfomance)
-            {
-                Graphics.DrawText($"atlas nodes {atlasNodes.Count()} " +
-                   $"\ndraw nodes {processingNodes.Count} " +
-                   $"\nrender ms {PluginManager.Plugins.First(x => x.Name == "cOverlay").RenderDebugInformation.TickAverage}" +
-                   $"\ntick m,s {PluginManager.Plugins.First(x => x.Name == "cOverlay").TickDebugInformation.TickAverage}" +
-                   $"\natlasDesc {atlasPanel.Descriptions.Count}" +
-                   $"\n{atlasPanel.Camera.Snapshot.Matrix.Translation}",
-                   new Vector2(200, 200),
-                   Color.LightGreen);
-            }
             if (state.DebugDrawCoordinates)
             {
                 if (counter > 0)
@@ -331,6 +354,8 @@ namespace cOverlay
                     resultText += "\n";
                 }
                 resultText += $"x{nodeCoords.X} y{nodeCoords.Y}";
+                resultText += $"\n{node.NodeObject.Element.Area.Name}";
+                resultText += $"\n{node.NodeObject.Element.IsTower}";
                 counter++;
             }
             if (state.DebugDrawNodePosition)
