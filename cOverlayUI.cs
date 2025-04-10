@@ -87,6 +87,7 @@ namespace cOverlay
             HelpMarker("Default: 20");
             ImGui.SliderInt("Trash node radius", ref state.nodeRadiusTrash, 1, 30);
             HelpMarker("Default: 15");
+            ImGui.SliderInt("Towers' range", ref state.towersRange, 10, 15);
             ImGui.ColorEdit4("Doable color", ref highTowerAmountColorBg, bFlags);
             ImGui.ColorEdit4("Doable text color", ref highTowerAmountColorTxt, bFlags);
             ImGui.ColorEdit4("Traversable node color", ref _traversalColor, bFlags);

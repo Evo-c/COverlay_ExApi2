@@ -50,6 +50,7 @@ namespace cOverlay
         public int traversalTransparency = 90;
         public int nodeRadiusTrash = 15;
         public bool showTowersAtName = true;
+        public int towersRange = 12;
 
         // Node settings
 

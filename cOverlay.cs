@@ -41,6 +41,12 @@ namespace cOverlay
             atlasNodes = [];
             atlasPoints = [];
             processingNodes = [];
+            emptyTowersList = [];
+            towerNodes.Clear();
+
+            atlasRefreshSw.Restart();
+            swRun.Restart();
+            contentSw.Restart();
         }
 
         public bool IsTower(AtlasPanelNode node)
@@ -55,7 +61,7 @@ namespace cOverlay
         public override void Tick()
         {
             var counter = 0;
-
+            atlasPanel = GameController.IngameState.IngameUi.WorldMap.AtlasPanel;
             if (atlasPanel.IsVisible)
             {
                 if (atlasRefreshSw.ElapsedMilliseconds > state.atlasRefreshRate || counter == 0)
@@ -126,7 +132,7 @@ namespace cOverlay
 
                                 var towers = atlasNodes.Where(x =>
                                 IsTower(x.Element));
-                                var nearbyTowers = towers.Where(x => Vector2.Distance(x.Coordinate, node.Coordinate) <= 11).ToArray();
+                                var nearbyTowers = towers.Where(x => Vector2.Distance(x.Coordinate, node.Coordinate) <= state.towersRange).ToArray();
                                 var affectedTowers = nearbyTowers.Where(x => atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate));
                                 emptyTowersList = towerNodes.Where(x => !atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate)).ToArray();
 
@@ -139,6 +145,9 @@ namespace cOverlay
 
                     swRun.Restart();
                 }
+            } else
+            {
+                counter = 0;
             }
 
             ListenHotkeys();
