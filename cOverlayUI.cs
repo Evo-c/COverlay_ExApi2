@@ -87,13 +87,16 @@ namespace cOverlay
             HelpMarker("Default: 20");
             ImGui.SliderInt("Trash node radius", ref state.nodeRadiusTrash, 1, 30);
             HelpMarker("Default: 15");
-            ImGui.SliderInt("Towers' range", ref state.towersRange, 10, 15);
+            ImGui.SliderFloat("Towers' range", ref state.towersRange, 10, 15);
             ImGui.ColorEdit4("Doable color", ref highTowerAmountColorBg, bFlags);
             ImGui.ColorEdit4("Doable text color", ref highTowerAmountColorTxt, bFlags);
             ImGui.ColorEdit4("Traversable node color", ref _traversalColor, bFlags);
             ImGui.ColorEdit4("Untraversable node color", ref _untraversalColor, bFlags);
 
             ImGui.SeparatorText("Area text settings");
+            ImGui.Checkbox("Enable corrupted maps counter (-1 of high towers amount)", ref state.ToggleCorruptedMaps);
+            ImGui.Checkbox("Recolor high towers amount", ref state.RecolorHighTowersAmount);
+            ImGui.Checkbox("Draw towers range", ref state.DrawTowerRange);
             ImGui.Checkbox("Show towers amount after name [1/5]", ref state.showTowersAtName);
             ImGui.SliderInt("High towers amount threshold", ref state.HighTowerAmountThreshold, 2, 10);
             HelpMarker("Number of towers around node for highlight. Default: 5");

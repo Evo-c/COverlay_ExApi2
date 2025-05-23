@@ -28,6 +28,8 @@ namespace cOverlay
 
         public bool drawDebug = false;
         public bool drawConnections = false;
+        public bool RecolorHighTowersAmount = false;
+        public bool DrawTowerRange = false;
 
         // Colors
 
@@ -50,7 +52,7 @@ namespace cOverlay
         public int traversalTransparency = 90;
         public int nodeRadiusTrash = 15;
         public bool showTowersAtName = true;
-        public int towersRange = 12;
+        public float towersRange = 12;
 
         // Node settings
 
@@ -67,6 +69,7 @@ namespace cOverlay
         // Content
 
         public bool ToggleGemling = true;
+        public bool ToggleCorruptedMaps = true;
         public Color GemlingColor = Color.Orange;
         public int ContentCircleThickness = 2;
         public int GapRadius = 5;

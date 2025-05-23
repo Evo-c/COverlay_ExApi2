@@ -92,10 +92,10 @@ namespace cOverlay
 
                         if (!processingNodes.Any(x => x.NodeCoords == node.Coordinate))
                         {
-                            //if (IsTower(node.Element) && node.Element.IsCompleted)
-                            //{
-                            //    towerNodes.Add(node);
-                            //}
+                            if (IsTower(node.Element) && node.Element.IsCompleted)
+                            {
+                                towerNodes.Add(node);
+                            }
                             if (!node.Element.IsCompleted)
                             {
                                 List<AtlasNodeDescription> nNodes = new List<AtlasNodeDescription>();
@@ -130,8 +130,7 @@ namespace cOverlay
                                     state.Load();
                                 }
 
-                                var towers = atlasNodes.Where(x =>
-                                IsTower(x.Element));
+                                var towers = atlasNodes.Where(x => IsTower(x.Element));
                                 var nearbyTowers = towers.Where(x => Vector2.Distance(x.Coordinate, node.Coordinate) <= state.towersRange).ToArray();
                                 var affectedTowers = nearbyTowers.Where(x => atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate));
                                 emptyTowersList = towerNodes.Where(x => !atlasPanel.EffectSources.Any(y => x.Coordinate == y.Coordinate)).ToArray();
@@ -166,6 +165,7 @@ namespace cOverlay
                 {
                     LogMessage($"Nodes refreshed");
                     processingNodes = [];
+                    atlasNodes = [];
                 }
             }
 
@@ -213,7 +213,11 @@ namespace cOverlay
                     var node = nodeObject.NodeObject.Element;
                     if (!IsTower(node))
                     {
-                        if (nodeObject.TowersCount >= state.HighTowerAmountThreshold && !nodeObject.NodeObject.Element.IsVisited)
+                        if ((nodeObject.TowersCount >= state.HighTowerAmountThreshold ||
+                            (IsCleansed(nodeObject.NodeObject.Element) || nodeObject.NodeObject.Element.IsCorrupted) 
+                            && nodeObject.TowersCount >= state.HighTowerAmountThreshold - 1
+                            && state.ToggleCorruptedMaps)
+                            && !nodeObject.NodeObject.Element.IsVisited)
                         {
                             DrawContent(node);
                             DrawNode(node);
@@ -228,6 +232,7 @@ namespace cOverlay
                     }
                     else
                     {
+                        //Graphics.DrawCircle(new Vector2(node.Center.X, node.Center.Y), state.towersRange * 50, Color.Red, 10, 90);
                         Graphics.DrawTextWithBackground("I AM TOWER", new Vector2(node.Center.X, node.Center.Y), Color.Yellow, ExileCore2.Shared.Enums.FontAlign.Center | ExileCore2.Shared.Enums.FontAlign.VerticalCenter, Color.Black);
                     }
 
@@ -240,9 +245,11 @@ namespace cOverlay
                 foreach (var _tower in emptyTowersList)
                 {
                     var tower = _tower;
+
+                    Graphics.DrawTextWithBackground("MISSING TABLET", new Vector2(tower.Element.Center.X, tower.Element.Center.Y), Color.Red, ExileCore2.Shared.Enums.FontAlign.Center | ExileCore2.Shared.Enums.FontAlign.VerticalCenter, Color.Black);
+
                     if (tower.Element.IsCompleted)
                     {
-                        Graphics.DrawTextWithBackground("MISSING TABLET", new Vector2(tower.Element.Center.X, tower.Element.Center.Y), Color.Red, ExileCore2.Shared.Enums.FontAlign.Center | ExileCore2.Shared.Enums.FontAlign.VerticalCenter, Color.Black);
                     }
                 }
             }
@@ -277,7 +284,7 @@ namespace cOverlay
 
             Graphics.DrawBox(
                 backgroundRect,
-                _node.TowersCount == _node.AffectedTowersCount && !IsTower(node) ? state.HighTowerAmountColorBg : state.NodeColors[node.Area.Name]
+                _node.TowersCount == _node.AffectedTowersCount && !IsTower(node) && state.RecolorHighTowersAmount ? state.HighTowerAmountColorBg : state.NodeColors[node.Area.Name]
                 /*node.Content.Any(x => x.Name == "Irradiated" || x.Name == "Map Boss" && node.IsCorrupted) ? Color.White : state.NodeColors[node.Area.Name]*/,
                 rounding);
 
@@ -305,12 +312,22 @@ namespace cOverlay
 
                 int counter = 1;
 
-                if (state.ToggleGemling && node.Content.Any(x => x.Name == "Irradiated" || x.Name == "Map Boss") && node.IsCorrupted)
+                if (state.ToggleGemling && node.IsCorrupted)
                 {
                     Graphics.DrawCircle(
                         new Vector2(node.Center.X, node.Center.Y),
                         state.NodeRadius + state.GapRadius + (float)(counter * state.ContentCircleThickness),
                         state.GemlingColor,
+                        state.ContentCircleThickness, 20);
+                    counter++;
+                }
+
+                if ((state.ToggleGemling && IsCleansed(node)))
+                {
+                    Graphics.DrawCircle(
+                        new Vector2(node.Center.X, node.Center.Y),
+                        state.NodeRadius + state.GapRadius + (float)(counter * state.ContentCircleThickness),
+                        Color.White,
                         state.ContentCircleThickness, 20);
                     counter++;
                 }
@@ -414,6 +431,7 @@ namespace cOverlay
                     resultText += $"content: {content.Name}";
                     counter++;
                 }
+                resultText += $"\n{IsCleansed(node.NodeObject.Element)}";
             }
             Graphics.DrawTextWithBackground(
                     resultText,
@@ -422,7 +440,15 @@ namespace cOverlay
                     ExileCore2.Shared.Enums.FontAlign.Center | ExileCore2.Shared.Enums.FontAlign.VerticalCenter,
                     Color.Green);
         }
-
+        public bool IsCleansed (AtlasPanelNode node)
+        {
+            bool result = false;
+            if (node.Children.Any(x => x.Children.Any(y => !string.IsNullOrEmpty(y.Tooltip.Text) && y.Tooltip.Text.Contains("Cleansed"))))
+            {
+                result = true;
+            }
+            return result;
+        }
         public void DrawConnections(Node node)
         {
             foreach (var ne in node.neighbourNodes)
