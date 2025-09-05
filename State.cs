@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -15,7 +15,38 @@ namespace cOverlay
         {
         }
 
-        public static string settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "MDK", "cOverlay");
+        private static string GetProjectConfigPath()
+        {
+            // Fetch plugin path
+            string pluginPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            DirectoryInfo currentDir = new DirectoryInfo(Path.GetDirectoryName(pluginPath));
+            
+            // Fetch project root path
+            DirectoryInfo projectRoot = currentDir.Parent?.Parent?.Parent;
+            
+            if (projectRoot != null && projectRoot.Exists)
+            {
+                string configPath = Path.Combine(projectRoot.FullName, "config", "cOverlay");
+                
+                // Ensure the config directory exists
+                if (!Directory.Exists(configPath))
+                {
+                    Directory.CreateDirectory(configPath);
+                }
+                
+                return configPath;
+            }
+            
+            // Fallback to relative config dir
+            string fallbackPath = Path.Combine(Directory.GetCurrentDirectory(), "config", "cOverlay");
+            if (!Directory.Exists(fallbackPath))
+            {
+                Directory.CreateDirectory(fallbackPath);
+            }
+            return fallbackPath;
+        }
+
+        public static string settingsPath = GetProjectConfigPath();
 
         // Keybinds
 
