@@ -334,16 +334,18 @@ namespace cOverlay
 
                 foreach (var content in nodeContent)
                 {
+                    // Ensure content keys exist in dictionaries before accessing them
+                    if (!state.ContentCircleColor.ContainsKey(content.Name))
+                    {
+                        state.ContentCircleColor.Add(content.Name, Color.White);
+                    }
+                    if (!state.ContentToggle.ContainsKey(content.Name))
+                    {
+                        state.ContentToggle.Add(content.Name, false);
+                    }
+
                     if (contentSw.ElapsedMilliseconds > 10000)
                     {
-                        if (!state.ContentCircleColor.ContainsKey(content.Name))
-                        {
-                            state.ContentCircleColor.Add(content.Name, Color.White);
-                        }
-                        if (!state.ContentToggle.ContainsKey(content.Name))
-                        {
-                            state.ContentToggle.Add(content.Name, false);
-                        }
                         contentSw.Restart();
                     }
 
